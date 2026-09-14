@@ -1,0 +1,17 @@
+# Build results
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+
+# Visual Studio
+.vs/
+*.suo
+*.cache
+
+# Rider
+.idea/
+
+# Publish
+publish/

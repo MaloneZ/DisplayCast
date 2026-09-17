@@ -110,7 +110,7 @@ public class PlayerServer
 
             case MsgType.GetPreview:
                 {
-                    var jpg = _window.Dispatcher.Invoke(_window.CaptureAndGetPreview);
+                    var jpg = await await _window.Dispatcher.InvokeAsync(_window.CaptureAndGetPreviewAsync);
                     var header = new NetMsg { Type = MsgType.Preview, Ok = true, PreviewLength = jpg?.Length ?? 0 };
                     await WriteAsync(stream, header);
                     if (jpg != null) await Framing.WriteAsync(stream, jpg);

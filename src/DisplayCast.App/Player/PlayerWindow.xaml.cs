@@ -1,9 +1,12 @@
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using DisplayCast.Core;
 using DisplayCast.Models;
 using DisplayCast.Net;
+using Microsoft.Web.WebView2.Core;
 
 namespace DisplayCast.Player;
 
@@ -84,7 +87,7 @@ public partial class PlayerWindow : Window
         if (_settings.PreviewIntervalSeconds > 0)
         {
             _previewTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(_settings.PreviewIntervalSeconds) };
-            _previewTimer.Tick += (_, _) => CapturePreview();
+            _previewTimer.Tick += async (_, _) => await CapturePreviewAsync();
             _previewTimer.Start();
         }
     }
@@ -136,26 +139,67 @@ public partial class PlayerWindow : Window
 
     // ---------- 实时预览 ----------
 
-    private void CapturePreview()
+    /// <summary>
+    /// 抓取一帧预览。
+    /// 网页内容（WebView2 为独立 Chromium 子窗口 HWND，不在 WPF 视觉树内）用
+    /// RenderTargetBitmap 抓取会得到纯黑画面，因此改用 WebView2 原生 CapturePreview；
+    /// 其余场景仍沿用 WPF 渲染管线抓屏。
+    /// </summary>
+    private async Task<byte[]?> CapturePreviewAsync()
     {
         try
         {
-            _lastPreview = ScreenCapture.CaptureJpeg(this);
+            byte[]? jpg = null;
+            if (_screenOn && _engine.IsWebVisible)
+                jpg = await CaptureWebPreviewAsync();
+            jpg ??= ScreenCapture.CaptureJpeg(this);
+            _lastPreview = jpg;
+            return jpg;
         }
         catch
         {
             _lastPreview = null;
+            return null;
         }
     }
 
-    public byte[]? GetPreview() => _lastPreview;
+    /// <summary>通过 WebView2 CapturePreview 抓取网页画面，等比缩略到 640 宽并压缩为 JPEG（与整体预览规格一致）。</summary>
+    private async Task<byte[]?> CaptureWebPreviewAsync()
+    {
+        try
+        {
+            var web = WebPlayer;
+            if (web?.CoreWebView2 == null) return null;
+            using var ms = new MemoryStream();
+            await web.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Jpeg, ms);
+            if (ms.Length == 0) return null;
+
+            ms.Position = 0;
+            var frame = BitmapFrame.Create(ms);
+            int w = frame.PixelWidth, h = frame.PixelHeight;
+            if (w <= 0 || h <= 0) return null;
+
+            double scale = w > 640 ? 640.0 / w : 1.0;
+            int tw = Math.Max(1, (int)Math.Round(w * scale));
+            int th = Math.Max(1, (int)Math.Round(h * scale));
+            var transform = new ScaleTransform(tw / (double)w, th / (double)h);
+            transform.Freeze();
+            var scaled = new TransformedBitmap(frame, transform);
+
+            var encoder = new JpegBitmapEncoder { QualityLevel = 55 };
+            encoder.Frames.Add(BitmapFrame.Create(scaled));
+            using var outMs = new MemoryStream();
+            encoder.Save(outMs);
+            return outMs.ToArray();
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     /// <summary>立即抓取一帧并返回（远程操作网页时用于获得实时画面）。</summary>
-    public byte[]? CaptureAndGetPreview()
-    {
-        CapturePreview();
-        return _lastPreview;
-    }
+    public Task<byte[]?> CaptureAndGetPreviewAsync() => CapturePreviewAsync();
 
     // ---------- 供 PlayerServer 调用的操作（UI 线程） ----------
 

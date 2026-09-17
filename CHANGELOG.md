@@ -2,6 +2,14 @@
 
 本项目的所有重要变更都记录在此文件中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [0.2.1] - 2026-09-17
+
+### 修复
+- 修复控制端「远程操作网页」预览黑屏：播放端预览截图改用 WebView2 `CapturePreviewAsync` 直接抓取 Chromium 渲染表面（`RenderTargetBitmap` 无法捕获 WebView2 独立子窗口，网页画面此前始终为黑）。
+
+### 新增
+- 应用图标：蓝色圆角底 + 白色显示器 + 播放三角 + 投屏波纹，集成到 exe 与所有窗口。
+
 ## [0.2.0] - 2026-09-14
 
 ### 新增

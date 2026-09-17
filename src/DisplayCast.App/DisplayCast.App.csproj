@@ -9,7 +9,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DisplayCast</RootNamespace>
     <AssemblyName>DisplayCast</AssemblyName>
-    <Version>0.1.0</Version>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Version>0.2.1</Version>
     <AssemblyTitle>DisplayCast 播控</AssemblyTitle>
     <Product>DisplayCast</Product>
     <Description>局域网显示设备播控软件</Description>
@@ -20,6 +21,10 @@
     <Using Include="System.IO" />
     <Using Remove="System.Drawing" />
     <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
   </ItemGroup>
 
   <ItemGroup>
